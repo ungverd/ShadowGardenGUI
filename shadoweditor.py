@@ -5,18 +5,18 @@ import serial
 from enum import Enum
 import wave
 import csv
-
-import Usbhost
+import subprocess
 
 from tkinter import filedialog
 from tkinter import *
 import tkinter.ttk as ttk
 
-from pydub import AudioSegment
-from pydub.exceptions import CouldntDecodeError
+import Usbhost
+
 
 FRAMERATE = 48000
 SAMPLEWIDTH = 2 #2 bytes == 16 bits
+SAMPLEFMT = 's16' #ffmpeg format
 
 master = Tk()
 master.geometry('500x600')
@@ -102,25 +102,21 @@ class ConvertCopy(WindowState):
 
 
 class FileFormat(Enum):
-    mp3 = 1
-    oog = 2
-    goodWav = 3
-    badWav = 4
-    notMusic = 5
+    notMusic = 1
+    good = 2
+    bad = 3
 
 def classifyFile(path):
     if len(path) >= 4:
-        if path[-4:] == ".mp3":
-            return FileFormat.mp3
-        if path[-4:] == ".oog":
-            return FileFormat.oog
+        if path[-4:] in (".mp3", ".oog"):
+            return FileFormat.bad
         elif path[-4:] == ".wav":
             try:
                 sound = wave.open(path, mode='rb')
                 if sound.getsampwidth() == SAMPLEWIDTH and sound.getframerate() == FRAMERATE:
-                    return FileFormat.goodWav
+                    return FileFormat.good
                 else:
-                    return FileFormat.badWav
+                    return FileFormat.bad
             except wave.Error:
                 return FileFormat.notMusic
     return FileFormat.notMusic
@@ -128,27 +124,20 @@ def classifyFile(path):
 
 def convert(src, dst):
     res = classifyFile(src)
-    if res in (FileFormat.mp3, FileFormat.oog, FileFormat.badWav):
-        try:
-            if res == FileFormat.mp3:
-                sound = AudioSegment.from_mp3(src)
-            elif res == FileFormat.oog:
-                sound = AudioSegment.from_ogg(src)
-            elif res == FileFormat.badWav:
-                sound = AudioSegment.from_wav(src)
-            sound = sound.set_frame_rate(FRAMERATE)
-            sound = sound.set_sample_width(SAMPLEWIDTH)
-            sound.export(dst, format="wav")
-            return True
-        except CouldntDecodeError as e:
-            print('Error during processing file %s: %s' % (src, e))
-    elif res == FileFormat.goodWav:
+    if res == FileFormat.good:
         if src != dst:
             copyfile(src, dst)
         return True
+    elif res == FileFormat.bad:
+        code = subprocess.call('ffmpeg -i "%s" -ar %d -sample_fmt %s "%s"' % (src, FRAMERATE, SAMPLEFMT, dst), shell=True)
+        if code == 0:
+            return True
+        else:
+            print ("Error converting file %s" % src)
+            return False
 
 def copyOnly(src, dst):
-    if classifyFile(src) == FileFormat.goodWav:
+    if classifyFile(src) == FileFormat.good:
         if src != dst:
             copyfile(src, dst)
         return True
@@ -169,12 +158,12 @@ def convertOrCopy(func):
         os.mkdir(new_name)
         full_dest = new_name
         basename = os.path.basename(full_dest)
-    folder = enterSourceObj.tree.insert("", 1, "", text=basename)
+    folder = enterSourceObj.tree.insert("", 0, text=basename)
     for filename in os.listdir(src_path):
         src = os.path.join(src_path, filename)
-        dst = os.path.join(full_dest, filename)
+        dst = os.path.join(full_dest, filename[:-4] + ".wav")
         if func(src, dst):
-            enterSourceObj.tree.insert(folder, "end", "", text=filename[:-4] + ".wav")
+            enterSourceObj.tree.insert(folder, "end", text=filename[:-4] + ".wav")
     
     convertCopyObj.end()
     enterSourceObj.begin()
@@ -204,13 +193,13 @@ def doAfterEnterPath():
         for filename in os.listdir(master.path):
             src = os.path.join(master.path, filename)
             res = classifyFile(src)
-            if res == FileFormat.goodWav:
-                convertCopyObj.currentfolder.insert("", 1, "", text=filename)
+            if res == FileFormat.good:
+                convertCopyObj.currentfolder.insert("", 0, text=filename)
                 haveToCopy = True
             elif res == FileFormat.notMusic:
-                convertCopyObj.currentfolder.insert("", 1, "", text=filename, tags = ('grey',))
+                convertCopyObj.currentfolder.insert("", 0, text=filename, tags = ('grey',))
             else:
-                convertCopyObj.currentfolder.insert("", 1, "", text=filename, tags = ('red',))
+                convertCopyObj.currentfolder.insert("", 0, text=filename, tags = ('red',))
                 haveToConvert = True
 
         enterSourceObj.end()
