@@ -25,17 +25,17 @@ tree=ttk.Treeview(master)
 class WindowState:
     initWidgets = []
     nowWidgets = []
-    
+
     def begin(self):
         for widget in self.initWidgets:
             widget.pack()
         self.nowWidgets += self.initWidgets
-        
+
     def end(self):
         for widget in self.nowWidgets:
             widget.pack_forget()
         self.nowWidgets = []
-            
+
     def add(self, widget):
         widget.pack()
         self.nowWidgets.append(widget)
@@ -43,7 +43,7 @@ class WindowState:
     def addTop(self, widget):
         widget.pack()
         self.nowWidgets = [widget] + self.nowWidgets
-    
+
 
 class EnterDest(WindowState):
     def __init__(self):
@@ -98,7 +98,7 @@ class ConvertCopy(WindowState):
     def end(self):
         WindowState.end(self)
         self.currentfolder.delete(*self.currentfolder.get_children())
-    
+
 
 
 class FileFormat(Enum):
@@ -159,12 +159,14 @@ def convertOrCopy(func):
         full_dest = new_name
         basename = os.path.basename(full_dest)
     folder = enterSourceObj.tree.insert("", 0, text=basename)
+    names = []
     for filename in os.listdir(src_path):
         src = os.path.join(src_path, filename)
-        dst = os.path.join(full_dest, filename[:-4] + ".wav")
+        dst_name = filename[:-4] + ".wav"
+        dst = os.path.join(full_dest, dst_name)
         if func(src, dst):
-            enterSourceObj.tree.insert(folder, "end", text=filename[:-4] + ".wav")
-    
+            enterSourceObj.tree.insert(folder, "end", text=dst_name)
+
     convertCopyObj.end()
     enterSourceObj.begin()
     enterSourceObj.add(enterSourceObj.tree)
@@ -172,7 +174,7 @@ def convertOrCopy(func):
 def back():
     convertCopyObj.end()
     enterSourceObj.begin()
-    
+
 def callback(event):
     master.path = enterSourceObj.entryForFolder.get()
     doAfterEnterPath()
@@ -203,13 +205,13 @@ def doAfterEnterPath():
                 haveToConvert = True
 
         enterSourceObj.end()
-                
+
         if haveToConvert:
             convertCopyObj.addTop(convertCopyObj.convertOrCopyLabel)
             convertCopyObj.addTop(convertCopyObj.convB)
         if haveToCopy:
             convertCopyObj.addTop(convertCopyObj.copyB)
-            
+
         convertCopyObj.begin()
 
     except (FileNotFoundError, OSError):
@@ -244,7 +246,7 @@ def selectDestFolder():
 def doAfterSelectDest():
     enterDestObj.end()
     enterSourceObj.begin()
-    
+
 
 ######################################
 
