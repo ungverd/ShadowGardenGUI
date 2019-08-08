@@ -60,6 +60,7 @@ class EnterDest(WindowState):
 
 class EnterSource(WindowState):
     def __init__(self):
+        self.folder_names = []
         self.entryForFolder = Entry(master)
         self.entryForFolder.bind('<Return>', callback)
         self.selectFolderB = Button(master, text="Выбрать исходную папку с музыкой", width=30, command=selectFolder)
@@ -158,8 +159,8 @@ def convertOrCopy(func):
         os.mkdir(new_name)
         full_dest = new_name
         basename = os.path.basename(full_dest)
+    enterSourceObj.folder_names.append(basename)
     folder = enterSourceObj.tree.insert("", 0, text=basename)
-    names = []
     for filename in os.listdir(src_path):
         src = os.path.join(src_path, filename)
         dst_name = filename[:-4] + ".wav"
