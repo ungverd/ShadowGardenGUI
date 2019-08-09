@@ -14,6 +14,10 @@ import tkinter.ttk as ttk
 import Usbhost
 
 
+import random
+import time
+
+
 FRAMERATE = 48000
 SAMPLEWIDTH = 2 #2 bytes == 16 bits
 SAMPLEFMT = 's16' #ffmpeg format
@@ -21,6 +25,7 @@ SAMPLEFMT = 's16' #ffmpeg format
 master = Tk()
 master.geometry('500x600')
 tree=ttk.Treeview(master)
+tree.tag_configure('active', foreground='#FFFFFF', background='#1111FF')
 
 class WindowState:
     initWidgets = []
@@ -60,13 +65,13 @@ class EnterDest(WindowState):
 
 class EnterSource(WindowState):
     def __init__(self):
-        self.folder_names = []
         self.entryForFolder = Entry(master)
         self.entryForFolder.bind('<Return>', callback)
         self.selectFolderB = Button(master, text="Выбрать исходную папку с музыкой", width=30, command=selectFolder)
         self.enterPathLabel = Label(master, text="\nИЛИ\nВведите путь к папке", justify=CENTER)
         self.notValidPathLabel = Label(master, text="Некорректный путь", foreground='#EE0000')
         self.tree = tree
+        self.writeMusicB = Button(master, text='Соотнести музыку с карточками', width=30, command=applyCards)
         self.initWidgets = [self.selectFolderB, self.enterPathLabel, self.entryForFolder]
 
     def begin(self):
@@ -82,6 +87,8 @@ class EnterSource(WindowState):
 
 class WriteMusic(WindowState):
     def __init__(self):
+        self.folder_names = []
+        self.folders_in_tree = []
         self.tree = tree
         self.initWidgets = [tree]
 
@@ -159,8 +166,9 @@ def convertOrCopy(func):
         os.mkdir(new_name)
         full_dest = new_name
         basename = os.path.basename(full_dest)
-    enterSourceObj.folder_names.append(basename)
+    writeMusicObj.folder_names.append(basename)
     folder = enterSourceObj.tree.insert("", 0, text=basename)
+    writeMusicObj.folders_in_tree.append(folder)
     for filename in os.listdir(src_path):
         src = os.path.join(src_path, filename)
         dst_name = filename[:-4] + ".wav"
@@ -171,6 +179,7 @@ def convertOrCopy(func):
     convertCopyObj.end()
     enterSourceObj.begin()
     enterSourceObj.add(enterSourceObj.tree)
+    enterSourceObj.add(enterSourceObj.writeMusicB)
 
 def back():
     convertCopyObj.end()
@@ -223,22 +232,43 @@ def selectFolder():
     master.path =  filedialog.askdirectory(initialdir = "/")
     doAfterEnterPath()
 
-def applyCards(names):
-    port = Usbhost.get_device_port()
-    with serial.Serial(port, baudrate=115200, timeout=0.1) as ser:
-        with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
-            spamwriter = csv.writer(csvfile, dialect='excel')
-            previous = ""
-            for name in names:
-                done = False
-                while not done:
-                    answer = ser.readall().decode('utf-8').split('\r')
-                    for line in answer:
-                        if line.startswith("Card: ") and line != previous:
-                            previous = line
-                            words = line.split(" ")
-                            spamwriter.writerow([words[1], words[2], name])
-                            done = True
+def applyCards():
+    enterSourceObj.end()
+    writeMusicObj.begin()
+    print(0)
+    time.sleep(10)
+    print(1)
+
+    tree = writeMusicObj.tree
+    names = writeMusicObj.folder_names
+    folders = writeMusicObj.folders_in_tree
+    #port = Usbhost.get_device_port()
+    #with serial.Serial(port, baudrate=115200, timeout=0.1) as ser:
+    with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='excel')
+        previous = ""
+        for i in range(len(names)):
+            name = names[i]
+            folder = folders[i]
+            tree.item(folder, tags=('active'))
+            if i > 0:
+                tree.item(folders[i-1], tags=())
+                print("pass")
+            done = False
+            j = 0
+            while not done:
+                answer = ["Card: %d %d" % (j, j)]
+                if random.random() < 0.01:
+                    j += 1
+                time.sleep(0.1)
+                #answer = ser.readall().decode('utf-8').split('\r')
+                for line in answer:
+                    enterSourceObj.tree
+                    if line.startswith("Card: ") and line != previous:
+                        previous = line
+                        words = line.split(" ")
+                        writer.writerow([words[1], words[2], name])
+                        done = True
 
 def selectDestFolder():
     master.dest =  filedialog.askdirectory(initialdir = "/")
