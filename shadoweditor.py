@@ -167,7 +167,7 @@ def convertOrCopy(func):
         full_dest = new_name
         basename = os.path.basename(full_dest)
     writeMusicObj.folder_names.append(basename)
-    folder = enterSourceObj.tree.insert("", 0, text=basename)
+    folder = enterSourceObj.tree.insert("", 'end', text=basename)
     writeMusicObj.folders_in_tree.append(folder)
     for filename in os.listdir(src_path):
         src = os.path.join(src_path, filename)
@@ -206,12 +206,12 @@ def doAfterEnterPath():
             src = os.path.join(master.path, filename)
             res = classifyFile(src)
             if res == FileFormat.good:
-                convertCopyObj.currentfolder.insert("", 0, text=filename)
+                convertCopyObj.currentfolder.insert("", 'end', text=filename)
                 haveToCopy = True
             elif res == FileFormat.notMusic:
-                convertCopyObj.currentfolder.insert("", 0, text=filename, tags = ('grey',))
+                convertCopyObj.currentfolder.insert("", 'end', text=filename, tags = ('grey',))
             else:
-                convertCopyObj.currentfolder.insert("", 0, text=filename, tags = ('red',))
+                convertCopyObj.currentfolder.insert("", 'end', text=filename, tags = ('red',))
                 haveToConvert = True
 
         enterSourceObj.end()
@@ -236,42 +236,45 @@ def applyCards():
     enterSourceObj.end()
     writeMusicObj.begin()
     gen = contextGen()
+    gen.send(None)
+    master.after_idle(recursive, gen, 0)
 
-def recursive(gen):
-    next(gen)
-    recursive(gen)    
+def recursive(gen, i):
+    gen.send(i)
+    if i < len(writeMusicObj.folder_names):
+        master.after_idle(recursive, gen, i+1)    
 
 def contextGen():
     tree = writeMusicObj.tree
     names = writeMusicObj.folder_names
     folders = writeMusicObj.folders_in_tree
-    #port = Usbhost.get_device_port()
-    #with serial.Serial(port, baudrate=115200, timeout=0.1) as ser:
-    with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile, dialect='excel')
-        previous = ""
-        i = 0
-        for i in range(len(names)):
-            name = names[i]
-            folder = folders[i]
-            tree.item(folder, tags=('active'))
-            if i > 0:
-                tree.item(folders[i-1], tags=())
-            yield
-            done = False
+    port = Usbhost.get_device_port()
+    with serial.Serial(port, baudrate=115200, timeout=0.1) as ser:
+        with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, dialect='excel')
+            previous = ""
             j = 0
-            while not done:
-                answer = ["Card: %d %d" % (j, j)]
-                if random.random() < 0.01:
-                    j += 1
-                time.sleep(0.1)
-                #answer = ser.readall().decode('utf-8').split('\r')
-                for line in answer:
-                    if line.startswith("Card: ") and line != previous:
-                        previous = line
-                        words = line.split(" ")
-                        writer.writerow([words[1], words[2], name])
-                        done = True
+            while True:
+                i = yield()
+                if i > 0:
+                    name = names[i-1]
+                    folder = folders[i-1]
+
+                    done = False
+                    while not done:
+                        answer = ser.readall().decode('utf-8').split('\r')
+                        for line in answer:
+                            if line.startswith("Card: ") and line != previous:
+                                previous = line
+                                words = line.split(" ")
+                                writer.writerow([words[1], words[2], name])
+                                done = True
+
+                    tree.item(folder, tags=())
+                if i < len(names):
+                    tree.item(folders[i], tags=('active'))
+                
+                
 
 def selectDestFolder():
     master.dest =  filedialog.askdirectory(initialdir = "/")
