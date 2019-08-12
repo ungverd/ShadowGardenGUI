@@ -253,7 +253,6 @@ def contextGen():
         with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, dialect='excel')
             previous = ""
-            j = 0
             while True:
                 i = yield()
                 if i > 0:
