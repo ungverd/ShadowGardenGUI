@@ -235,10 +235,13 @@ def selectFolder():
 def applyCards():
     enterSourceObj.end()
     writeMusicObj.begin()
-    print(0)
-    time.sleep(10)
-    print(1)
+    gen = contextGen()
 
+def recursive(gen):
+    next(gen)
+    recursive(gen)    
+
+def contextGen():
     tree = writeMusicObj.tree
     names = writeMusicObj.folder_names
     folders = writeMusicObj.folders_in_tree
@@ -247,13 +250,14 @@ def applyCards():
     with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, dialect='excel')
         previous = ""
+        i = 0
         for i in range(len(names)):
             name = names[i]
             folder = folders[i]
             tree.item(folder, tags=('active'))
             if i > 0:
                 tree.item(folders[i-1], tags=())
-                print("pass")
+            yield
             done = False
             j = 0
             while not done:
@@ -263,7 +267,6 @@ def applyCards():
                 time.sleep(0.1)
                 #answer = ser.readall().decode('utf-8').split('\r')
                 for line in answer:
-                    enterSourceObj.tree
                     if line.startswith("Card: ") and line != previous:
                         previous = line
                         words = line.split(" ")
