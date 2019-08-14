@@ -1,7 +1,6 @@
 import sys
 import os
 from shutil import copyfile
-import serial
 from enum import Enum
 import wave
 import csv
@@ -11,11 +10,9 @@ from tkinter import filedialog
 from tkinter import *
 import tkinter.ttk as ttk
 
+import serial
+
 import Usbhost
-
-
-import random
-import time
 
 
 FRAMERATE = 48000
@@ -242,7 +239,7 @@ def applyCards():
 def recursive(gen, i):
     gen.send(i)
     if i < len(writeMusicObj.folder_names):
-        master.after_idle(recursive, gen, i+1)    
+        master.after_idle(recursive, gen, i+1)
 
 def contextGen():
     tree = writeMusicObj.tree
@@ -272,8 +269,8 @@ def contextGen():
                     tree.item(folder, tags=())
                 if i < len(names):
                     tree.item(folders[i], tags=('active'))
-                
-                
+
+
 
 def selectDestFolder():
     master.dest =  filedialog.askdirectory(initialdir = "/")
