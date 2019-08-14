@@ -237,9 +237,12 @@ def applyCards():
     master.after_idle(recursive, gen, 0)
 
 def recursive(gen, i):
-    gen.send(i)
+    res = gen.send(i)
     if i < len(writeMusicObj.folder_names):
-        master.after_idle(recursive, gen, i+1)
+        if res:
+            master.after_idle(recursive, gen, i+1)
+        else:
+            master.after_idle(recursive, gen, i)
 
 def contextGen():
     tree = writeMusicObj.tree
@@ -251,7 +254,7 @@ def contextGen():
             writer = csv.writer(csvfile, dialect='excel')
             previous = ""
             while True:
-                i = yield()
+                i = yield(True)
                 if i > 0:
                     name = names[i-1]
                     folder = folders[i-1]
@@ -259,6 +262,7 @@ def contextGen():
                     done = False
                     while not done:
                         answer = ser.readall().decode('utf-8').split('\r')
+                        _ = yield(False)
                         for line in answer:
                             if line.startswith("Card: ") and line != previous:
                                 previous = line
