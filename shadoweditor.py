@@ -14,10 +14,6 @@ import tkinter.ttk as ttk
 import Usbhost
 
 
-import random
-import time
-
-
 FRAMERATE = 48000
 SAMPLEWIDTH = 2 #2 bytes == 16 bits
 SAMPLEFMT = 's16' #ffmpeg format
@@ -52,12 +48,13 @@ class WindowState:
 
 class EnterDest(WindowState):
     def __init__(self):
+        self.createDestB = Button(master, text="Создать папку для записи музыки", width=30, command=createDestFolder)
         self.entryForDest = Entry(master)
         self.entryForDest.bind('<Return>', firstCallback)
         self.selectDestB = Button(master, text="Выбрать папку для записи музыки", width=30, command=selectDestFolder)
         self.enterDestLabel = Label(master, text="\nИЛИ\nВведите путь к папке", justify=CENTER)
         self.notValidDestLabel = Label(master, text="Некорректный путь", foreground='#EE0000')
-        self.initWidgets = [self.selectDestB, self.enterDestLabel, self.entryForDest]
+        self.initWidgets = [self.createDestB, self.selectDestB, self.enterDestLabel, self.entryForDest]
 
     def begin(self):
         WindowState.begin(self)
@@ -239,10 +236,15 @@ def applyCards():
     gen.send(None)
     master.after_idle(recursive, gen, 0)
 
+
 def recursive(gen, i):
-    gen.send(i)
+    res = gen.send(i)
     if i < len(writeMusicObj.folder_names):
-        master.after_idle(recursive, gen, i+1)    
+        if res:
+            master.after_idle(recursive, gen, i+1)
+        else:
+            master.after_idle(recursive, gen, i)
+
 
 def contextGen():
     tree = writeMusicObj.tree
@@ -254,7 +256,7 @@ def contextGen():
             writer = csv.writer(csvfile, dialect='excel')
             previous = ""
             while True:
-                i = yield()
+                i = yield(True)
                 if i > 0:
                     name = names[i-1]
                     folder = folders[i-1]
@@ -274,9 +276,24 @@ def contextGen():
                     tree.item(folders[i], tags=('active'))
                 
                 
-
 def selectDestFolder():
     master.dest =  filedialog.askdirectory(initialdir = "/")
+    doAfterSelectDest()
+
+def createDestFolder():
+    cur_path = os.getcwd()
+    full_path = os.path.join(cur_path, "new")
+    if not os.path.isdir(full_path):
+        os.mkdir(full_dest)
+    else:
+        i = 1
+        new_name = full_path + str(i)
+        while os.path.isdir(new_name):
+            i += 1
+            new_name = full_path + str(i)
+        os.mkdir(new_name)
+        full_path = new_name
+    master.dest = full_path
     doAfterSelectDest()
 
 def doAfterSelectDest():
