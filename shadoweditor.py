@@ -1,7 +1,6 @@
 import sys
 import os
 from shutil import copyfile
-import serial
 from enum import Enum
 import wave
 import csv
@@ -10,6 +9,8 @@ import subprocess
 from tkinter import filedialog
 from tkinter import *
 import tkinter.ttk as ttk
+
+import serial
 
 import Usbhost
 
@@ -245,7 +246,6 @@ def recursive(gen, i):
         else:
             master.after_idle(recursive, gen, i)
 
-
 def contextGen():
     tree = writeMusicObj.tree
     names = writeMusicObj.folder_names
@@ -264,6 +264,7 @@ def contextGen():
                     done = False
                     while not done:
                         answer = ser.readall().decode('utf-8').split('\r')
+                        _ = yield(False)
                         for line in answer:
                             if line.startswith("Card: ") and line != previous:
                                 previous = line
@@ -284,7 +285,7 @@ def createDestFolder():
     cur_path = os.getcwd()
     full_path = os.path.join(cur_path, "new")
     if not os.path.isdir(full_path):
-        os.mkdir(full_dest)
+        os.mkdir(full_path)
     else:
         i = 1
         new_name = full_path + str(i)
