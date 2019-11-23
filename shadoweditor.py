@@ -271,10 +271,8 @@ def contextGen():
         previous = ""
         while True:
             i = yield(True)
-            print(i)
-            if i > 0:
+            if i > 0 and i <= len(names):
                 name = names[i-1]
-                print(name)
                 folder = folders[i-1]
 
                 done = False
@@ -285,7 +283,6 @@ def contextGen():
                         if line.startswith("Card: ") and line != previous:
                             previous = line
                             words = line.split(" ")
-                            print("write %s" % name)
                             writer.writerow([words[1], words[2], name])
                             done = True
 
