@@ -240,7 +240,7 @@ def applyCards():
 
 def recursive(gen, i):
     res = gen.send(i)
-    if i < len(writeMusicObj.folder_names):
+    if i <= len(writeMusicObj.folder_names):
         if res:
             master.after_idle(recursive, gen, i+1)
         else:
