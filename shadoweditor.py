@@ -257,7 +257,7 @@ def contextGen():
             previous = ""
             while True:
                 i = yield(True)
-                if i > 0:
+                if i > 0 and i <= len(names):
                     name = names[i-1]
                     folder = folders[i-1]
 
