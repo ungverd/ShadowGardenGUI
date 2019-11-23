@@ -10,9 +10,9 @@ from tkinter import filedialog
 from tkinter import *
 import tkinter.ttk as ttk
 
-import serial
+#import serial
 
-import Usbhost
+#import Usbhost
 
 
 FRAMERATE = 48000
@@ -89,6 +89,19 @@ class WriteMusic(WindowState):
         self.folders_in_tree = []
         self.tree = tree
         self.initWidgets = [tree]
+
+        self.hid = master
+        self.hid.counter = 0
+        self.hid.bind("<Key>", self.pres)
+        self.hid.readall = self.readall
+    def pres(self, event):
+        if event.char == " ":
+            self.hid.counter += 1
+    def readall(self):
+        if self.hid.counter > 0:
+            return b"Card: 1234 567%d" % self.hid.counter
+        else:
+            return b""
 
 class ConvertCopy(WindowState):
     def __init__(self):
@@ -240,41 +253,45 @@ def applyCards():
 
 def recursive(gen, i):
     res = gen.send(i)
-    if i < len(writeMusicObj.folder_names):
+    if i <= len(writeMusicObj.folder_names):
         if res:
             master.after_idle(recursive, gen, i+1)
         else:
             master.after_idle(recursive, gen, i)
 
+
 def contextGen():
     tree = writeMusicObj.tree
     names = writeMusicObj.folder_names
     folders = writeMusicObj.folders_in_tree
-    port = Usbhost.get_device_port()
-    with serial.Serial(port, baudrate=115200, timeout=0.1) as ser:
-        with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile, dialect='excel')
-            previous = ""
-            while True:
-                i = yield(True)
-                if i > 0:
-                    name = names[i-1]
-                    folder = folders[i-1]
+    #port = Usbhost.get_device_port()
+    ser = writeMusicObj.hid
+    with open(os.path.join(master.dest, 'folders.csv'), 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='excel')
+        previous = ""
+        while True:
+            i = yield(True)
+            print(i)
+            if i > 0:
+                name = names[i-1]
+                print(name)
+                folder = folders[i-1]
 
-                    done = False
-                    while not done:
-                        answer = ser.readall().decode('utf-8').split('\r')
-                        _ = yield(False)
-                        for line in answer:
-                            if line.startswith("Card: ") and line != previous:
-                                previous = line
-                                words = line.split(" ")
-                                writer.writerow([words[1], words[2], name])
-                                done = True
+                done = False
+                while not done:
+                    answer = ser.readall().decode('utf-8').split('\r')
+                    _ = yield(False)
+                    for line in answer:
+                        if line.startswith("Card: ") and line != previous:
+                            previous = line
+                            words = line.split(" ")
+                            print("write %s" % name)
+                            writer.writerow([words[1], words[2], name])
+                            done = True
 
-                    tree.item(folder, tags=())
-                if i < len(names):
-                    tree.item(folders[i], tags=('active'))
+                tree.item(folder, tags=())
+            if i < len(names):
+                tree.item(folders[i], tags=('active'))
                 
                 
 def selectDestFolder():
